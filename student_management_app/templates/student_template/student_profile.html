@@ -89,22 +89,32 @@ Update Profile
                             <!-- mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm -->
 
                             <!-- Button to open the camera -->
-                            <label>Scan Your Face </label>
-                            <button id="open-camera-btn" type="button">Open Camera</button>
-
-                            <!-- Video element for live camera feed -->
-                            <div id="camera-container" style="display: none;">
-                                <video id="video" autoplay></video>
-                                <button id="capture-btn" class="btn btn-success" type="button">Capture Image</button>
-                                <button id="close-camera-btn" class="btn btn-secondary" type="button">Close
-                                    Camera</button>
+                            <div class="form-group">
+                                <label>Scan Your Face</label>
+                                <div class="d-flex align-items-center">
+                                    <button id="open-camera-btn" class="btn btn-info mr-2" type="button">
+                                        <i class="fas fa-camera"></i> Open Camera
+                                    </button>
+                                    <span id="camera-status" class="text-muted" style="display: none;">Camera
+                                        Opened</span>
+                                </div>
                             </div>
 
+                            <!-- Video element for live camera feed -->
+                            <div id="camera-container" class="camera-container" style="display: none;">
+                                <video id="video" autoplay></video>
+                                <button id="capture-btn" class="btn btn-success capture-btn" type="button">
+                                    <i class="fas fa-camera"></i> Capture Image
+                                </button>
+                                <button id="close-camera-btn" class="btn btn-danger close-btn" type="button">
+                                    <i class="fas fa-times"></i> Close Camera
+                                </button>
+                            </div>
 
                             <!-- Display captured image -->
-                            <div id="output-container" style="display:none;">
-                                <h3>Captured Image</h3>
-                                <img id="captured-image" alt="Captured Image" />
+                            <div id="output-container" style="display:none;" class="mt-3 text-center">
+                                <h5>Captured Image</h5>
+                                <img id="captured-image" alt="Captured Image" class="img-fluid" />
                             </div>
 
 
@@ -130,9 +140,11 @@ Update Profile
     const cameraContainer = document.getElementById("camera-container");
     const video = document.getElementById("video");
     const captureBtn = document.getElementById("capture-btn");
+    const closeCameraBtn = document.getElementById("close-camera-btn");
     const outputContainer = document.getElementById("output-container");
     const capturedImage = document.getElementById("captured-image");
-    const closeCameraBtn = document.getElementById("close-camera-btn");
+    const cameraStatus = document.getElementById("camera-status");
+
     let stream;
 
     // Open the camera when the button is clicked
@@ -140,60 +152,197 @@ Update Profile
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true });
             video.srcObject = stream;
-            cameraContainer.style.display = "block";
-            openCameraBtn.style.display = "none";
+            cameraContainer.style.display = "block";  // Show the camera container
+            captureBtn.style.display = "inline";  // Ensure the capture button is visible
+            openCameraBtn.style.display = "none";  // Hide the open camera button
+            cameraStatus.style.display = "inline";  // Show camera status
         } catch (err) {
             alert("Error accessing camera: " + err.message);
         }
     });
-    closeCameraBtn.addEventListener("click", () => {
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-        }
-        cameraContainer.style.display = "none";
-        openCameraBtn.style.display = "block";
-    });
+
     // Capture the image and send it to the server
     captureBtn.addEventListener("click", () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const context = canvas.getContext("2d");
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Ensure the video element has valid dimensions
+        const videoWidth = video.videoWidth || video.offsetWidth;
+        const videoHeight = video.videoHeight || video.offsetHeight;
 
-        // Convert the canvas image to Base64
-        const imageData = canvas.toDataURL("image/jpeg");
+        // Check if video has valid dimensions
+        if (videoWidth && videoHeight) {
+            const canvas = document.createElement("canvas");
+            canvas.width = videoWidth;
+            canvas.height = videoHeight;
+            const context = canvas.getContext("2d");
 
-        // Display the captured image
-        capturedImage.src = imageData;
-        outputContainer.style.display = "block";
+            // Draw the current video frame on the canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Send the image to the server
-        fetch("/save-image/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ image: imageData }),
-        })
-            .then((response) => {
-                if (response.ok) {
-                    alert("Image saved successfully!");
-                    // Optionally clear the displayed image after saving
-                    capturedImage.src = "";  // Clear the image from the display
-                    outputContainer.style.display = "none";  // Hide the container again
-                } else {
-                    alert("Failed to save the image.");
-                }
+            // Convert the canvas image to Base64 format
+            const imageData = canvas.toDataURL("image/jpeg");
+
+            // Display the captured image
+            capturedImage.src = imageData;
+            outputContainer.style.display = "block";
+
+            // Send the image to the server
+            fetch("/save-image/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ image: imageData }),
             })
-            .catch((error) => {
-                alert("Error: " + error.message);
-            });
+                .then((response) => {
+                    if (response.ok) {
+                        alert("Image saved successfully!");
+                    } else {
+                        alert("Failed to save the image.");
+                    }
+                })
+                .catch((error) => {
+                    alert("Error: " + error.message);
+                });
 
-        // Stop the video stream
+            // Stop the video stream after capturing
+            stream.getTracks().forEach((track) => track.stop());
+            cameraContainer.style.display = "none";
+            cameraStatus.style.display = "none";
+        } else {
+            alert("Error: Video not loaded properly.");
+        }
+    });
+
+    // Close the camera and stop the stream
+    closeCameraBtn.addEventListener("click", () => {
         stream.getTracks().forEach((track) => track.stop());
         cameraContainer.style.display = "none";
+        openCameraBtn.style.display = "inline";
+        cameraStatus.style.display = "none";
     });
 </script>
+
+
+
+<style>
+    /* Fullscreen Camera View */
+    .camera-container {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        height: 60vh;
+        /* Adjust to a more suitable aspect ratio */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: black;
+        border-radius: 10px;
+        margin: 0 auto;
+        /* Center the container */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Video element for live feed */
+    #video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        /* Fill the container while keeping aspect ratio */
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Buttons for capture and close camera */
+    .capture-btn,
+    .close-btn {
+        position: absolute;
+        bottom: 15%;
+        /* Position buttons near bottom of camera container */
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 25px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease-in-out;
+        z-index: 10;
+        cursor: pointer;
+    }
+
+    /* Position Capture Button on the left side */
+    .capture-btn {
+        left: 5%;
+        background-color: #28a745;
+        color: white;
+    }
+
+    .capture-btn:hover {
+        background-color: #218838;
+        transform: scale(1.05);
+    }
+
+    /* Position Close Button on the right side */
+    .close-btn {
+        right: 5%;
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .close-btn:hover {
+        background-color: #c82333;
+        transform: scale(1.05);
+    }
+
+    /* Camera Button Effects */
+    #open-camera-btn {
+        border-radius: 50%;
+        padding: 15px;
+        background-color: #007bff;
+        color: white;
+        transition: all 0.3s ease-in-out;
+    }
+
+    #open-camera-btn:hover {
+        transform: scale(1.1);
+    }
+
+    /* Mobile-first Design (Improved for Smaller Screens) */
+    @media (max-width: 768px) {
+        .camera-container {
+            width: 95%;
+            /* Make the container take 90% of the screen width */
+            height: 60vh;
+            /* Limit height to 60% of the screen */
+        }
+
+        /* Adjust buttons */
+        .capture-btn,
+        .close-btn {
+            font-size: 14px;
+            padding: 12px 20px;
+            bottom: 5%;
+            /* Adjust buttons to be closer to the bottom */
+        }
+
+        /* Adjust video feed and ensure it's responsive */
+        #video {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        /* Adjust the open camera button to be better on mobile */
+        #open-camera-btn {
+            padding: 12px;
+            font-size: 16px;
+        }
+    }
+
+    /* Ensure buttons are visible and don't overlap on very small screens */
+    @media (max-height: 600px) {
+
+        .capture-btn,
+        .close-btn {
+            bottom: 2%;
+        }
+    }
+</style>
 
 {% endblock main_content %}

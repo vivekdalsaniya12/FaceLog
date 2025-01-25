@@ -42,7 +42,8 @@ def student_home(request):
         "total_subjects": total_subjects,
         "subject_name": subject_name,
         "data_present": data_present,
-        "data_absent": data_absent
+        "data_absent": data_absent,
+        "profilepic":student_obj
     }
     return render(request, "student_template/student_home_template.html", context)
 
@@ -53,12 +54,14 @@ def student_view_attendance(request):
     # course = Courses.objects.get(id=student.course_id.id) # Getting Course Enrolled of LoggedIn Student
     subjects = Subjects.objects.filter(course_id=course) # Getting the Subjects of Course Enrolled
     context = {
-        "subjects": subjects
+        "subjects": subjects,
+        "profilepic":student
     }
     return render(request, "student_template/student_view_attendance.html", context)
 
 
 def student_view_attendance_post(request):
+    student_obj = Students.objects.get(admin=request.user.id)
     if request.method != "POST":
         messages.error(request, "Invalid Method")
         return redirect('student_view_attendance')
@@ -91,7 +94,8 @@ def student_view_attendance_post(request):
 
         context = {
             "subject_obj": subject_obj,
-            "attendance_reports": attendance_reports
+            "attendance_reports": attendance_reports,
+            "profilepic":student_obj
         }
 
         return render(request, 'student_template/student_attendance_data.html', context)
@@ -101,7 +105,8 @@ def student_apply_leave(request):
     student_obj = Students.objects.get(admin=request.user.id)
     leave_data = LeaveReportStudent.objects.filter(student_id=student_obj)
     context = {
-        "leave_data": leave_data
+        "leave_data": leave_data,
+        "profilepic":student_obj
     }
     return render(request, 'student_template/student_apply_leave.html', context)
 
@@ -129,7 +134,8 @@ def student_feedback(request):
     student_obj = Students.objects.get(admin=request.user.id)
     feedback_data = FeedBackStudent.objects.filter(student_id=student_obj)
     context = {
-        "feedback_data": feedback_data
+        "feedback_data": feedback_data,
+         "profilepic":student_obj
     }
     return render(request, 'student_template/student_feedback.html', context)
 
@@ -155,10 +161,12 @@ def student_feedback_save(request):
 def student_profile(request):
     user = CustomUser.objects.get(id=request.user.id)
     student = Students.objects.get(admin=user)
+    student_obj = Students.objects.get(admin=request.user.id)
 
     context={
         "user": user,
-        "student": student
+        "student": student,
+         "profilepic":student_obj
     }
     return render(request, 'student_template/student_profile.html', context)
 
@@ -197,6 +205,7 @@ def student_view_result(request):
     student_result = StudentResult.objects.filter(student_id=student.id)
     context = {
         "student_result": student_result,
+        "profilepic":student
     }
     return render(request, "student_template/student_view_result.html", context)
 
@@ -206,6 +215,7 @@ def student_view_result(request):
 
 @csrf_exempt
 def save_image(request):
+    student = Students.objects.get(admin=request.user.id)
     if request.method == 'POST':
         try:
             # Get the image data
@@ -218,7 +228,7 @@ def save_image(request):
             image = Image.open(BytesIO(image_bytes))
 
             # Save image to a folder (ensure the folder exists)
-            save_path = os.path.join('media/images', 'captured_image.jpg')
+            save_path = os.path.join('media/images', f"{student.id}_{student.admin.first_name}_{student.admin.last_name}"+'.jpg')
             image.save(save_path)
 
             return JsonResponse({'status': 'success', 'message': 'Image saved successfully!'})
