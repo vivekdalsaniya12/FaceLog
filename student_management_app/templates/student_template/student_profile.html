@@ -1,7 +1,7 @@
 {% extends 'student_template/base_template.html' %}
 
 {% block page_title %}
-    Update Profile
+Update Profile
 {% endblock page_title %}
 
 {% block main_content %}
@@ -9,12 +9,12 @@
 {% load static %}
 
 <section class="content">
-        <div class="container-fluid">
+    <div class="container-fluid">
 
-            <div class="row">
-                <div class="col-md-12">
-                    <!-- general form elements -->
-                    <div class="card card-primary">
+        <div class="row">
+            <div class="col-md-12">
+                <!-- general form elements -->
+                <div class="card card-primary">
                     <div class="card-header">
                         <h3 class="card-title">Update Profile</h3>
                     </div>
@@ -23,42 +23,46 @@
                     <form role="form" method="POST" action="{% url 'student_profile_update' %}">
                         {% csrf_token %}
 
-                        
-                                {% comment %} Display Messages {% endcomment %}
-                                {% if messages %}
-                                <div class="form-group">
-                                <div class="col-12">
-                                    {% for message in messages %}
-                                    {% if message.tags == "error" %}
-                                        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-top: 10px;">
-                                        {{ message }}
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                        </div>
-                                    {% elif message.tags == "success" %}
-                                        <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-top: 10px;">
-                                        {{ message }}
-                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                        </div>
-                                    {% endif %}
-                                    {% endfor %}
+
+                        {% comment %} Display Messages {% endcomment %}
+                        {% if messages %}
+                        <div class="form-group">
+                            <div class="col-12">
+                                {% for message in messages %}
+                                {% if message.tags == "error" %}
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert"
+                                    style="margin-top: 10px;">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
                                 </div>
+                                {% elif message.tags == "success" %}
+                                <div class="alert alert-success alert-dismissible fade show" role="alert"
+                                    style="margin-top: 10px;">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
                                 </div>
                                 {% endif %}
-                            
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
 
                         <div class="card-body">
                             <div class="form-group">
                                 <label>Username </label>
-                                <input type="text" class="form-control" name="username" value="{{ user.username }}" disabled="disabled">
+                                <input type="text" class="form-control" name="username" value="{{ user.username }}"
+                                    disabled="disabled">
                             </div>
 
                             <div class="form-group">
                                 <label>Email </label>
-                                <input type="text" class="form-control" name="email" value="{{ user.email }}" disabled="disabled">
+                                <input type="text" class="form-control" name="email" value="{{ user.email }}"
+                                    disabled="disabled">
                             </div>
 
                             <div class="form-group">
@@ -78,23 +82,118 @@
 
                             <div class="form-group">
                                 <label>Password </label>
-                                <input type="text" class="form-control" name="password" placeholder="Fill only if you want to change Password.">
+                                <input type="text" class="form-control" name="password"
+                                    placeholder="Fill only if you want to change Password.">
                             </div>
+
+                            <!-- mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm -->
+
+                            <!-- Button to open the camera -->
+                            <label>Scan Your Face </label>
+                            <button id="open-camera-btn" type="button">Open Camera</button>
+
+                            <!-- Video element for live camera feed -->
+                            <div id="camera-container" style="display: none;">
+                                <video id="video" autoplay></video>
+                                <button id="capture-btn" class="btn btn-success" type="button">Capture Image</button>
+                                <button id="close-camera-btn" class="btn btn-secondary" type="button">Close
+                                    Camera</button>
+                            </div>
+
+
+                            <!-- Display captured image -->
+                            <div id="output-container" style="display:none;">
+                                <h3>Captured Image</h3>
+                                <img id="captured-image" alt="Captured Image" />
+                            </div>
+
+
+                            <!-- mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm -->
 
                         </div>
                         <!-- /.card-body -->
 
                         <div class="card-footer">
-                        <button type="submit" class="btn btn-primary">Update Profile</button>
+                            <button type="submit" class="btn btn-primary">Update Profile</button>
                         </div>
                     </form>
-                    </div>
-                    <!-- /.card -->
-
                 </div>
+                <!-- /.card -->
+
             </div>
+        </div>
 
-        </div><!-- /.container-fluid -->
-      </section>
+    </div><!-- /.container-fluid -->
+</section>
+<script>
+    const openCameraBtn = document.getElementById("open-camera-btn");
+    const cameraContainer = document.getElementById("camera-container");
+    const video = document.getElementById("video");
+    const captureBtn = document.getElementById("capture-btn");
+    const outputContainer = document.getElementById("output-container");
+    const capturedImage = document.getElementById("captured-image");
+    const closeCameraBtn = document.getElementById("close-camera-btn");
+    let stream;
 
-  {% endblock main_content %}
+    // Open the camera when the button is clicked
+    openCameraBtn.addEventListener("click", async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            cameraContainer.style.display = "block";
+            openCameraBtn.style.display = "none";
+        } catch (err) {
+            alert("Error accessing camera: " + err.message);
+        }
+    });
+    closeCameraBtn.addEventListener("click", () => {
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+        }
+        cameraContainer.style.display = "none";
+        openCameraBtn.style.display = "block";
+    });
+    // Capture the image and send it to the server
+    captureBtn.addEventListener("click", () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Convert the canvas image to Base64
+        const imageData = canvas.toDataURL("image/jpeg");
+
+        // Display the captured image
+        capturedImage.src = imageData;
+        outputContainer.style.display = "block";
+
+        // Send the image to the server
+        fetch("/save-image/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ image: imageData }),
+        })
+            .then((response) => {
+                if (response.ok) {
+                    alert("Image saved successfully!");
+                    // Optionally clear the displayed image after saving
+                    capturedImage.src = "";  // Clear the image from the display
+                    outputContainer.style.display = "none";  // Hide the container again
+                } else {
+                    alert("Failed to save the image.");
+                }
+            })
+            .catch((error) => {
+                alert("Error: " + error.message);
+            });
+
+        // Stop the video stream
+        stream.getTracks().forEach((track) => track.stop());
+        cameraContainer.style.display = "none";
+    });
+</script>
+
+{% endblock main_content %}

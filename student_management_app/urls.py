@@ -90,4 +90,5 @@ urlpatterns = [
     path('student_profile/', StudentViews.student_profile, name="student_profile"),
     path('student_profile_update/', StudentViews.student_profile_update, name="student_profile_update"),
     path('student_view_result/', StudentViews.student_view_result, name="student_view_result"),
+    path('save-image/', StudentViews.save_image, name='save_image'),
 ]

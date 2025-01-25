@@ -4,6 +4,12 @@ from django.contrib import messages
 from django.core.files.storage import FileSystemStorage #To upload Profile Picture
 from django.urls import reverse
 import datetime # To Parse input DateTime into Python Date Time Object
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import base64
+import os
+from io import BytesIO
+from PIL import Image
 
 from student_management_app.models import CustomUser, Staffs, Courses, Subjects, Students, Attendance, AttendanceReport, LeaveReportStudent, FeedBackStudent, StudentResult
 
@@ -198,3 +204,24 @@ def student_view_result(request):
 
 
 
+@csrf_exempt
+def save_image(request):
+    if request.method == 'POST':
+        try:
+            # Get the image data
+            data = request.body.decode('utf-8')
+            start_index = data.find('base64,') + len('base64,')  # Get the start of the base64 string
+            image_data = data[start_index:]
+
+            # Convert from Base64 to image
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(BytesIO(image_bytes))
+
+            # Save image to a folder (ensure the folder exists)
+            save_path = os.path.join('media/images', 'captured_image.jpg')
+            image.save(save_path)
+
+            return JsonResponse({'status': 'success', 'message': 'Image saved successfully!'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
