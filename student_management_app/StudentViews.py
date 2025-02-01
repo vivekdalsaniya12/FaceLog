@@ -13,6 +13,8 @@ from PIL import Image
 
 from student_management_app.models import CustomUser, Staffs, Courses, Subjects, Students, Attendance, AttendanceReport, LeaveReportStudent, FeedBackStudent, StudentResult
 
+def camera_view(request):
+    return render(request, 'student_template/camera.html')
 
 def student_home(request):
     student_obj = Students.objects.get(admin=request.user.id)
@@ -210,28 +212,54 @@ def student_view_result(request):
     return render(request, "student_template/student_view_result.html", context)
 
 
-
-
-
 @csrf_exempt
 def save_image(request):
-    student = Students.objects.get(admin=request.user.id)
+    student = Students.objects.get(admin=request.user.id)  # Get the logged-in student
+    
     if request.method == 'POST':
         try:
-            # Get the image data
+            # Extract image data from the request
             data = request.body.decode('utf-8')
-            start_index = data.find('base64,') + len('base64,')  # Get the start of the base64 string
+            start_index = data.find('base64,') + len('base64,')
             image_data = data[start_index:]
-
-            # Convert from Base64 to image
+            
+            # Convert base64 data to image
             image_bytes = base64.b64decode(image_data)
             image = Image.open(BytesIO(image_bytes))
 
-            # Save image to a folder (ensure the folder exists)
-            save_path = os.path.join('media/images', f"{student.id}_{student.admin.first_name}_{student.admin.last_name}"+'.jpg')
+            # Define the student folder using name and class
+            student_folder = os.path.join('media/images', f"{student.course_id.course_name}{student.admin.email}")
+            
+            # Ensure the student directory exists
+            os.makedirs(student_folder, exist_ok=True)
+            
+
+             # Get existing images sorted by timestamp in filename (student_id_timestamp)
+            existing_images = sorted(
+            [os.path.join(student_folder, f) for f in os.listdir(student_folder) if f.startswith(f"{student.admin.first_name}_") and f.endswith(".jpg")],
+            key=lambda f: f.split('_')[-1].split('.')[0],  # Sorting by timestamp part of the filename
+            reverse=False  # Sorting by oldest first
+            )
+
+            # If more than 10 images exist, delete the oldest one
+            if len(existing_images) > 8:
+                os.remove(existing_images[0])
+
+            # Get the new image count
+            image_count = len(existing_images) + 1  
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{student.admin.first_name}_{timestamp}.jpg"
+
+            # Set image filename
+            save_path = os.path.join(student_folder, image_filename)
+
+            # Save image
             image.save(save_path)
 
-            return JsonResponse({'status': 'success', 'message': 'Image saved successfully!'})
+            return JsonResponse({'status': 'success', 'message': f'Image {image_count} saved successfully!', 'path': save_path})
+        
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
+
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
