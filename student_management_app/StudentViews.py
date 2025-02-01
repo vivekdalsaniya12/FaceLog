@@ -8,13 +8,13 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import base64
 import os
+import json
+import face_recognition
+import numpy as np
 from io import BytesIO
 from PIL import Image
-
 from student_management_app.models import CustomUser, Staffs, Courses, Subjects, Students, Attendance, AttendanceReport, LeaveReportStudent, FeedBackStudent, StudentResult
 
-def camera_view(request):
-    return render(request, 'student_template/camera.html')
 
 def student_home(request):
     student_obj = Students.objects.get(admin=request.user.id)
@@ -211,6 +211,8 @@ def student_view_result(request):
     }
     return render(request, "student_template/student_view_result.html", context)
 
+def camera_view(request):
+    return render(request, 'student_template/camera.html')
 
 @csrf_exempt
 def save_image(request):
@@ -228,7 +230,7 @@ def save_image(request):
             image = Image.open(BytesIO(image_bytes))
 
             # Define the student folder using name and class
-            student_folder = os.path.join('media/images', f"{student.course_id.course_name}{student.admin.email}")
+            student_folder = os.path.join('media/images', f"{student.course_id.course_name}_{student.admin.email}")
             
             # Ensure the student directory exists
             os.makedirs(student_folder, exist_ok=True)
@@ -263,3 +265,45 @@ def save_image(request):
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
+
+# Train models and save encoding in database
+
+
+# Extract Encodings and Store in Database
+@csrf_exempt
+def extract_and_store_encodings(request):
+    student = Students.objects.get(admin=request.user.id)  # Get the logged-in student
+
+    if request.method == "POST":
+        try:
+
+            student_folder = os.path.join('media/images',f"{student.course_id.course_name}_{student.admin.email}")
+            if not os.path.exists(student_folder):
+                return JsonResponse({"error": "No images found for this student!"}, status=400)
+
+            encodings = []
+
+            for img_name in os.listdir(student_folder):
+                img_path = os.path.join(student_folder, img_name)
+                image = face_recognition.load_image_file(img_path)
+
+                face_locations = face_recognition.face_locations(image, model="cnn")  # Use CNN
+                face_encodings = face_recognition.face_encodings(image, face_locations)
+
+                if face_encodings:  # If a face is detected
+                    encodings.append(face_encodings[0])
+
+            if not encodings:
+                return JsonResponse({"error": "No face detected in images!"}, status=400)
+
+            avg_encoding = np.mean(encodings, axis=0)  # Take average of all encodings
+
+            # Store in database
+            student.face_encoding = avg_encoding.tolist()
+            student.save()
+
+            return JsonResponse({"success": "Face encoding stored successfully!"})
+        
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}) 
+    return JsonResponse({'error': 'Invalid request method'}, status=400)

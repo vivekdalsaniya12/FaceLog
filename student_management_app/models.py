@@ -69,6 +69,7 @@ class Students(models.Model):
     address = models.TextField()
     course_id = models.ForeignKey(Courses, on_delete=models.DO_NOTHING, default=1)
     session_year_id = models.ForeignKey(SessionYearModel, on_delete=models.CASCADE)
+    face_encoding = models.JSONField(null=True, blank=True)  # Store face encoding
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     objects = models.Manager()

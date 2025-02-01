@@ -92,4 +92,5 @@ urlpatterns = [
     path('student_view_result/', StudentViews.student_view_result, name="student_view_result"),
     path('save-image/', StudentViews.save_image, name='save_image'),
     path('camera/', StudentViews.camera_view, name='camera_page'),
+    path('extract-encodings/', StudentViews.extract_and_store_encodings, name='extract_encodings'),
 ]

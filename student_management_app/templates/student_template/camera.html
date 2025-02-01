@@ -174,6 +174,29 @@
                 stream = null;
                 showNotification('Camera closed. Returning to previous page...');
                 setTimeout(() => window.location.href = '/student_profile', 1000);
+                // call here extract_and_store_encodings views.py 
+                try {
+                    let response = fetch('/extract-encodings/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    let result = response.json();
+
+                    if (result.success) {
+                        showNotification('Face encoding stored successfully!');
+                    } else {
+                        showNotification('Error: ' + (result.error || 'Failed to process face encoding.'));
+                    }
+                } catch (error) {
+                    console.error('Error calling extract_and_store_encodings:', error);
+                    showNotification('Error processing face data.');
+                }
+               
+                
+               
 
             }
         }
