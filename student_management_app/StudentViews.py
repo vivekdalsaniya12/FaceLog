@@ -237,14 +237,15 @@ def save_image(request):
             
 
              # Get existing images sorted by timestamp in filename (student_id_timestamp)
-            existing_images = sorted(
-            [os.path.join(student_folder, f) for f in os.listdir(student_folder) if f.startswith(f"{student.admin.first_name}_") and f.endswith(".jpg")],
-            key=lambda f: f.split('_')[-1].split('.')[0],  # Sorting by timestamp part of the filename
-            reverse=False  # Sorting by oldest first
-            )
-
+            # existing_images = sorted(
+            # [os.path.join(student_folder, f) for f in os.listdir(student_folder) if f.startswith(f"{student.admin.first_name}_") and f.endswith(".jpg")],
+            # key=lambda f: f.split('_')[-1].split('.')[0],  # Sorting by timestamp part of the filename
+            # reverse=False  # Sorting by oldest first
+            # )
+            image_files = [ os.path.join(student_folder, f) for f in os.listdir(student_folder) if f.startswith(f"{student.admin.first_name}_") and f.endswith(".jpg")]
+            existing_images = sorted(image_files, key=os.path.getmtime)
             # If more than 10 images exist, delete the oldest one
-            if len(existing_images) > 8:
+            if len(existing_images) >= 10:
                 os.remove(existing_images[0])
 
             # Get the new image count
