@@ -355,6 +355,20 @@ def staff_add_result_save(request):
             return redirect('staff_add_result')
 #########################################3
 
+def store_session_data(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        request.session["subject_id"] = data.get("subject_id")
+        request.session["session_year_id"] = data.get("session_year_id")
+        return JsonResponse({"status": "success"})
+
+    return JsonResponse({"status": "error"}, status=400)
 
 def video_view(request):
-    return render(request, "staff_template/video.html")
+    subject_id = request.session.get("subject_id")
+    session_year_id = request.session.get("session_year_id")
+    context = {
+        "subject_id": subject_id,
+        "session_year":session_year_id  
+    }
+    return render(request, "staff_template/video.html",context)

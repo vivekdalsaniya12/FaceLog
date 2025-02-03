@@ -14,6 +14,8 @@ class VideoConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data=None, bytes_data=None):
         if text_data:
             data = json.loads(text_data)
+            subject_id = data.get("subject_id")
+            session_year = data.get("session_year")
             frame_data = data.get("frame")
             if frame_data:
                 # Remove data URL header if present
@@ -28,7 +30,8 @@ class VideoConsumer(AsyncWebsocketConsumer):
                 frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
                 # Process the frame using OpenCV (e.g., convert to grayscale)
-                processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                processed_frame = frame
 
                 # Encode the processed frame back to JPEG format
                 ret, buffer = cv2.imencode('.jpg', processed_frame)

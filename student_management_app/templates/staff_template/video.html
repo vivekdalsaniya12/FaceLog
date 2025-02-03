@@ -1,14 +1,24 @@
 <!-- templates/video.html -->
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Real-Time Video Processing</title>
     <style>
-      video, img { border: 1px solid #ddd; margin: 5px; }
+        video,
+        img {
+            border: 1px solid #ddd;
+            margin: 5px;
+        }
     </style>
 </head>
+
 <body>
+    <!-- <h2>Subject ID: {{ subject_id }}</h2>
+    <h2>Session Year ID: {{ session_year }}</h2> -->
+
+
     <h1>Real-Time Video Processing with WebSockets</h1>
     <!-- Display the live webcam stream -->
     <video id="video" width="320" height="240" autoplay></video>
@@ -16,23 +26,30 @@
     <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
     <!-- Display the processed frame -->
     <h2>Processed Frame:</h2>
-    <img id="processed" width="320" height="240" alt="Processed Video Frame" />
+    <img id="processed" width="520" height="440" alt="Processed Video Frame" />
 
     <script>
         const video = document.getElementById("video");
         const canvas = document.getElementById("canvas");
         const processedImg = document.getElementById("processed");
         const context = canvas.getContext("2d");
+        const subjectid = "{{ subject_id }}";
+        const sessionid = "{{ session_year }}";
 
         // Determine correct WebSocket protocol based on page protocol
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
         const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/video/`);
 
-        socket.onopen = function() {
+        socket.onopen = function (e) {
+            let data = {
+                subject_id : subjectid,
+                session_year : sessionid
+            };
+            socket.send(JSON.stringify(data)); // Send JSON data to server
             console.log("WebSocket connection established.");
         };
 
-        socket.onmessage = function(event) {
+        socket.onmessage = function (event) {
             const data = JSON.parse(event.data);
             if (data.frame) {
                 // Update the image element with the processed frame
@@ -40,17 +57,17 @@
             }
         };
 
-        socket.onerror = function(error) {
+        socket.onerror = function (error) {
             console.error("WebSocket error: ", error);
         };
 
         // Request webcam access and display the live stream
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(function(stream) {
+            .then(function (stream) {
                 video.srcObject = stream;
                 video.play();
             })
-            .catch(function(err) {
+            .catch(function (err) {
                 console.error("Error accessing webcam: " + err);
             });
 
@@ -65,4 +82,5 @@
         setInterval(sendFrame, 200);
     </script>
 </body>
+
 </html>

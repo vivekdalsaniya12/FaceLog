@@ -97,7 +97,30 @@ Take Attendance
 
 <script>
     document.getElementById("videoBtn").addEventListener("click", function () {
-        window.location.href = "/video";
+        var subject_id = document.getElementById("subject").value;
+        var session_year_id = document.getElementById("session_year").value;
+
+        // Send data to Django using AJAX
+        fetch("{% url 'store_session_data' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                subject_id: subject_id,
+                session_year_id: session_year_id
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    window.location.href = "{% url 'video' %}"; // Redirect to the second page
+                } else {
+                    alert("Error storing session data!");
+                }
+            })
+            .catch(error => console.error("Error:", error));
     });
     $(document).ready(function () {
         $("#fetch_student").click(function () {
@@ -108,7 +131,7 @@ Take Attendance
             var session_year = $("#session_year").val()
 
             $.ajax({
-                url: '{% url 'get_students' %}',
+                url: "{% url 'get_students' %}",
                 type: 'POST',
                 data: { subject: subject, session_year: session_year },
             })
@@ -162,7 +185,7 @@ Take Attendance
                 // Saving Attendance Data into Database
 
                 $.ajax({
-                    url: '{% url 'save_attendance_data' %}',
+                    url: "{% url 'save_attendance_data' %}",
                     type: 'POST',
                     data: { student_ids: student_data, attendance_date: attendance_date, subject_id: subject_id, session_year_id: session_year_id },
                 })
