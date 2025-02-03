@@ -1,0 +1,68 @@
+<!-- templates/video.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Video Processing</title>
+    <style>
+      video, img { border: 1px solid #ddd; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Video Processing with WebSockets</h1>
+    <!-- Display the live webcam stream -->
+    <video id="video" width="320" height="240" autoplay></video>
+    <!-- A hidden canvas for capturing frames -->
+    <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
+    <!-- Display the processed frame -->
+    <h2>Processed Frame:</h2>
+    <img id="processed" width="320" height="240" alt="Processed Video Frame" />
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const processedImg = document.getElementById("processed");
+        const context = canvas.getContext("2d");
+
+        // Determine correct WebSocket protocol based on page protocol
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/video/`);
+
+        socket.onopen = function() {
+            console.log("WebSocket connection established.");
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.frame) {
+                // Update the image element with the processed frame
+                processedImg.src = data.frame;
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.error("WebSocket error: ", error);
+        };
+
+        // Request webcam access and display the live stream
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch(function(err) {
+                console.error("Error accessing webcam: " + err);
+            });
+
+        // Capture and send frames at regular intervals (e.g., every 100ms)
+        function sendFrame() {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frameData = canvas.toDataURL("image/jpeg");
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ frame: frameData }));
+            }
+        }
+        setInterval(sendFrame, 200);
+    </script>
+</body>
+</html>
