@@ -1,85 +1,245 @@
-<!-- templates/video.html -->
 <!DOCTYPE html>
 <html>
 
 <head>
     <meta charset="UTF-8">
-    <title>Real-Time Video Processing</title>
+    <title>Open Camera</title>
     <style>
-        video,
-        img {
-            border: 1px solid #ddd;
-            margin: 5px;
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            /* Prevent scrolling */
+        }
+
+        /* Fullscreen canvas with cover effect */
+        #videoCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        /* Button styling */
+        #closeBtn,
+        #changeCameraBtn {
+            position: absolute;
+            z-index: 100;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        #closeBtn {
+            top: 20px;
+            left: 20px;
+        }
+
+        #changeCameraBtn {
+            top: 20px;
+            left: 150px;
         }
     </style>
 </head>
 
 <body>
-    <!-- <h2>Subject ID: {{ subject_id }}</h2>
-    <h2>Session Year ID: {{ session_year }}</h2> -->
-
-
-    <h1>Real-Time Video Processing with WebSockets</h1>
-    <!-- Display the live webcam stream -->
-    <video id="video" width="320" height="240" autoplay></video>
-    <!-- A hidden canvas for capturing frames -->
-    <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
-    <!-- Display the processed frame -->
-    <h2>Processed Frame:</h2>
-    <img id="processed" width="520" height="440" alt="Processed Video Frame" />
+    <!-- Fullscreen canvas for displaying processed frames -->
+    <canvas id="videoCanvas"></canvas>
+    <!-- Buttons for closing or changing camera -->
+    <button id="closeBtn">Close Camera</button>
+    <button id="changeCameraBtn">Change Camera</button>
+    <!-- Hidden video element to capture stream -->
+    <video id="video" autoplay playsinline style="display: none;"></video>
 
     <script>
-        const video = document.getElementById("video");
-        const canvas = document.getElementById("canvas");
-        const processedImg = document.getElementById("processed");
-        const context = canvas.getContext("2d");
-        const subjectid = "{{ subject_id }}";
-        const sessionid = "{{ session_year }}";
+        const video = document.getElementById('video');
+        const outputCanvas = document.getElementById('videoCanvas');
+        const outputContext = outputCanvas.getContext('2d');
+        const closeBtn = document.getElementById('closeBtn');
+        const changeCameraBtn = document.getElementById('changeCameraBtn');
+        const subjectData = "{{ subject_id }}";  // Render these on your template
+        const sessionYearData = "{{ session_year }}";
 
-        // Determine correct WebSocket protocol based on page protocol
-        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/video/`);
+        let currentFacingMode = 'user';  // 'user' for front, 'environment' for back
+        let stream = null;
+        let capturing = false;
 
-        socket.onopen = function (e) {
-            let data = {
-                subject_id : subjectid,
-                session_year : sessionid
-            };
-            socket.send(JSON.stringify(data)); // Send JSON data to server
-            console.log("WebSocket connection established.");
+        // Offscreen canvas for capturing frames (lower resolution for speed)
+        const captureCanvas = document.createElement('canvas');
+        const captureContext = captureCanvas.getContext('2d');
+
+        // Frame queue to buffer incoming frames from the server.
+        let frameQueue = [];
+        let isDisplaying = false;
+
+        // Establish WebSocket connection.
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(protocol + '://' + window.location.host + "/ws/video/");
+        // Expect binary blobs from the server.
+        socket.binaryType = "blob";
+
+        socket.onopen = () => {
+            // Send initialization data.
+            const initData = { subject_id: subjectData, session_year: sessionYearData };
+            socket.send(JSON.stringify(initData));
+            console.log("WebSocket connection established and initialization data sent.");
         };
 
-        socket.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-            if (data.frame) {
-                // Update the image element with the processed frame
-                processedImg.src = data.frame;
+        socket.onmessage = (e) => {
+            // Handle messages from the server.
+            if (typeof e.data === 'string') {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.frame) {
+                        // Fallback: if frame is sent as a base64-encoded string.
+                        frameQueue.push({ frame: data.frame, processed: data.processed });
+                        if (!isDisplaying) displayNextFrame();
+                    }
+                } catch (err) {
+                    console.error("Error parsing server text message:", err);
+                }
+            } else {
+                // When receiving binary data (a Blob containing JPEG image).
+                const url = URL.createObjectURL(e.data);
+                frameQueue.push({ frame: url, processed: true });
+                if (!isDisplaying) displayNextFrame();
             }
         };
 
-        socket.onerror = function (error) {
-            console.error("WebSocket error: ", error);
-        };
+        // Helper: Draw an image with a cover effect (mimicking object-fit: cover)
+        function drawImageCover(ctx, img, canvasWidth, canvasHeight) {
+            // Use natural dimensions of the image
+            const imgWidth = img.naturalWidth;
+            const imgHeight = img.naturalHeight;
+            const canvasRatio = canvasWidth / canvasHeight;
+            const imgRatio = imgWidth / imgHeight;
+            let renderableWidth, renderableHeight, xStart, yStart;
 
-        // Request webcam access and display the live stream
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(function (stream) {
-                video.srcObject = stream;
-                video.play();
-            })
-            .catch(function (err) {
-                console.error("Error accessing webcam: " + err);
-            });
-
-        // Capture and send frames at regular intervals (e.g., every 100ms)
-        function sendFrame() {
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const frameData = canvas.toDataURL("image/jpeg");
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ frame: frameData }));
+            if (imgRatio > canvasRatio) {
+                // Image is wider than canvas – scale height to fit, crop sides.
+                renderableHeight = canvasHeight;
+                renderableWidth = imgWidth * (canvasHeight / imgHeight);
+                xStart = (canvasWidth - renderableWidth) / 2;
+                yStart = 0;
+            } else {
+                // Image is taller than canvas – scale width to fit, crop top/bottom.
+                renderableWidth = canvasWidth;
+                renderableHeight = imgHeight * (canvasWidth / imgWidth);
+                xStart = 0;
+                yStart = (canvasHeight - renderableHeight) / 2;
             }
+            ctx.drawImage(img, xStart, yStart, renderableWidth, renderableHeight);
         }
-        setInterval(sendFrame, 200);
+
+        // Display frames from the queue.
+        function displayNextFrame() {
+            if (frameQueue.length === 0) {
+                isDisplaying = false;
+                return;
+            }
+            isDisplaying = true;
+            const frameObj = frameQueue.shift();
+            const img = new Image();
+            img.onload = () => {
+                // Clear using the CSS dimensions (since we scaled the context)
+                outputContext.clearRect(0, 0, window.innerWidth, window.innerHeight);
+                // Draw the image with our cover effect using CSS dimensions.
+                drawImageCover(outputContext, img, window.innerWidth, window.innerHeight);
+                URL.revokeObjectURL(img.src);  // Clean up the object URL.
+                // Display next frame after a short delay.
+                setTimeout(displayNextFrame, 50);
+            };
+            img.src = frameObj.frame;
+        }
+
+        // Adjust canvas dimensions for high-DPI devices.
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const displayWidth = window.innerWidth;
+            const displayHeight = window.innerHeight;
+            outputCanvas.width = displayWidth * dpr;
+            outputCanvas.height = displayHeight * dpr;
+            outputCanvas.style.width = displayWidth + 'px';
+            outputCanvas.style.height = displayHeight + 'px';
+            // Reset any existing transforms and scale the context.
+            outputContext.setTransform(1, 0, 0, 1, 0, 0);
+            outputContext.scale(dpr, dpr);
+        }
+
+        // Capture loop: periodically send frames to the server.
+        let lastCaptureTime = 0;
+        const captureIntervalMS = 100;  // Capture every 100ms (adjust as needed)
+
+        function captureLoop(timestamp) {
+            if (!lastCaptureTime) lastCaptureTime = timestamp;
+            const elapsed = timestamp - lastCaptureTime;
+            if (elapsed >= captureIntervalMS && video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Capture at a lower resolution for faster processing.
+                const targetWidth = video.videoWidth ;
+                const targetHeight = video.videoHeight ;
+                captureCanvas.width = targetWidth;
+                captureCanvas.height = targetHeight;
+                captureContext.drawImage(video, 0, 0, targetWidth, targetHeight);
+                // Convert the captured frame to a JPEG blob.
+                captureCanvas.toBlob((blob) => {
+                    if (socket.readyState === WebSocket.OPEN && blob) {
+                        socket.send(blob);
+                    }
+                }, 'image/jpeg',0.8);
+                lastCaptureTime = timestamp;
+            }
+            if (capturing) requestAnimationFrame(captureLoop);
+        }
+
+        // Start or restart the camera stream.
+        function startCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            capturing = false;
+            const constraints = { video: { facingMode: currentFacingMode }, audio: false };
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(mediaStream => {
+                    stream = mediaStream;
+                    video.srcObject = stream;
+                    video.play();
+                    video.onloadedmetadata = () => {
+                        // Resize the canvas to fill the viewport properly.
+                        resizeCanvas();
+                        // Start the capture loop.
+                        capturing = true;
+                        requestAnimationFrame(captureLoop);
+                    };
+                })
+                .catch(err => console.error("Error accessing camera:", err));
+        }
+
+        // Adjust canvas on window resize (e.g., when mobile rotates)
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        // Start the camera when the page loads.
+        startCamera();
+
+        // Close camera on button click.
+        closeBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            capturing = false;
+            socket.close();
+            window.location.href = '/staff_update_attendance';
+        });
+
+        // Toggle between front and back cameras.
+        changeCameraBtn.addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            startCamera();
+        });
     </script>
 </body>
 

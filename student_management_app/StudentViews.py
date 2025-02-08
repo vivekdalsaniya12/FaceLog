@@ -298,7 +298,7 @@ def extract_and_store_encodings(request):
                 return JsonResponse({"error": "No face detected in images!"}, status=400)
 
             avg_encoding = np.mean(encodings, axis=0)  # Take average of all encodings
-
+            print(f"this is enconding ::: {avg_encoding}")
             # Store in database
             student.face_encoding = avg_encoding.tolist()
             student.save()
