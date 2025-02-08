@@ -110,7 +110,7 @@
 
         async function openCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
                 camera.srcObject = stream;
             } catch (err) {
                 showNotification('Error accessing camera.');
@@ -120,10 +120,8 @@
 
         async function capturePhoto() {
             try {
-
-                // Ensure the video has loaded its metadata so that dimensions are available
                 if (camera.videoWidth === 0 || camera.videoHeight === 0) {
-                    alert('Permision Denied or Camera not accesable!!!');
+                    alert('Permission Denied or Camera not accessible!');
                     return;
                 }
 
@@ -132,34 +130,27 @@
                 canvas.height = camera.videoHeight;
                 const context = canvas.getContext('2d');
 
-                // Draw the current video frame onto the canvas
                 context.drawImage(camera, 0, 0, canvas.width, canvas.height);
-
-                // Convert canvas to Base64 JPEG image data
                 const imageData = canvas.toDataURL('image/jpeg');
 
-                // Send the captured image to the server
                 const response = await fetch('/save-image/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: imageData })
                 });
 
-
                 if (response.ok) {
                     if (captureCount < 10) {
                         captureCount++;
                         counterDisplay.textContent = `${captureCount}/10`;
                         showNotification(`Picture ${captureCount} captured!`);
-
                         if (captureCount === 10) {
-                            showNotification('Captured 10 pictures. Closing camera...');
+                            showNotification('Captured 10 pictures. Processing...');
                             setTimeout(closeCamera, 1000);
                         }
                     }
                 } else {
-                    showNotification(`Picture ${captureCount} captured!| pictured not saved`);
-                    // alert('Failed to save the image.');
+                    showNotification('Picture not saved! Try again.');
                 }
 
             } catch (error) {
@@ -167,19 +158,17 @@
                 alert('An error occurred while capturing the photo.');
             }
         }
+
         async function closeCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
-                showNotification('Camera closed. Returning to previous page...');
-                setTimeout(() => window.location.href = '/student_profile', 1000);
+                showNotification('Camera closed. Processing...');
 
                 try {
                     let response = await fetch('/extract-encodings/', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                     });
 
                     let result = await response.json();
@@ -190,39 +179,13 @@
                         showNotification('Error: ' + (result.error || 'Failed to process face encoding.'));
                     }
                 } catch (error) {
-                    console.error('Error calling extract_and_store_encodings:', error);
+                    console.error('Error processing face data:', error);
                     showNotification('Error processing face data.');
                 }
+
+                setTimeout(() => window.location.href = '/student_profile', 1500);
             }
         }
-        // function closeCamera() {
-        //     if (stream) {
-        //         stream.getTracks().forEach(track => track.stop());
-        //         stream = null;
-        //         showNotification('Camera closed. Returning to previous page...');
-        //         setTimeout(() => window.location.href = '/student_profile', 1000);
-        //         // call here extract_and_store_encodings views.py 
-        //         try {
-        //             let response = fetch('/extract-encodings/', {
-        //                 method: 'POST',
-        //                 headers: {
-        //                     'Content-Type': 'application/json',
-        //                 },
-        //             });
-
-        //             let result = response.json();
-
-        //             if (result.success) {
-        //                 showNotification('Face encoding stored successfully!');
-        //             } else {
-        //                 showNotification('Error: ' + (result.error || 'Failed to process face encoding.'));
-        //             }
-        //         } catch (error) {
-        //             console.error('Error calling extract_and_store_encodings:', error);
-        //             showNotification('Error processing face data.');
-        //         }
-        //     }
-        // }
 
         function showNotification(message) {
             notification.textContent = message;

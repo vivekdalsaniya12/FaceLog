@@ -214,97 +214,84 @@ def student_view_result(request):
 def camera_view(request):
     return render(request, 'student_template/camera.html')
 
+# Temporary storage for images (stored in RAM)
+TEMP_IMAGE_STORAGE = {}
+
 @csrf_exempt
 def save_image(request):
+    """Receives images, stores in RAM, and processes encodings"""
     student = Students.objects.get(admin=request.user.id)  # Get the logged-in student
     
     if request.method == 'POST':
         try:
-            # Extract image data from the request
             data = request.body.decode('utf-8')
             start_index = data.find('base64,') + len('base64,')
             image_data = data[start_index:]
             
-            # Convert base64 data to image
+            # Convert base64 data to image (high-quality processing)
             image_bytes = base64.b64decode(image_data)
             image = Image.open(BytesIO(image_bytes))
 
-            # Define the student folder using name and class
-            student_folder = os.path.join('media/images', f"{student.course_id.course_name}_{student.admin.email}")
+            # Ensure image is in RGB format for processing
+            image = image.convert("RGB")
+
+            # Store in RAM (Temporary storage)
+            if student.id not in TEMP_IMAGE_STORAGE:
+                TEMP_IMAGE_STORAGE[student.id] = []
             
-            # Ensure the student directory exists
-            os.makedirs(student_folder, exist_ok=True)
-            
+            TEMP_IMAGE_STORAGE[student.id].append(image)
 
-             # Get existing images sorted by timestamp in filename (student_id_timestamp)
-            # existing_images = sorted(
-            # [os.path.join(student_folder, f) for f in os.listdir(student_folder) if f.startswith(f"{student.admin.first_name}_") and f.endswith(".jpg")],
-            # key=lambda f: f.split('_')[-1].split('.')[0],  # Sorting by timestamp part of the filename
-            # reverse=False  # Sorting by oldest first
-            # )
-            image_files = [ os.path.join(student_folder, f) for f in os.listdir(student_folder) if f.startswith(f"{student.admin.first_name}_") and f.endswith(".jpg")]
-            existing_images = sorted(image_files, key=os.path.getmtime)
-            # If more than 10 images exist, delete the oldest one
-            if len(existing_images) >= 10:
-                os.remove(existing_images[0])
+            # Limit to 10 images per student
+            if len(TEMP_IMAGE_STORAGE[student.id]) > 10:
+                TEMP_IMAGE_STORAGE[student.id].pop(0)  # Remove oldest image
 
-            # Get the new image count
-            image_count = len(existing_images) + 1  
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            image_filename = f"{student.admin.first_name}_{timestamp}.jpg"
+            return JsonResponse({'status': 'success', 'message': f'Image {len(TEMP_IMAGE_STORAGE[student.id])} stored temporarily!'})
 
-            # Set image filename
-            save_path = os.path.join(student_folder, image_filename)
-
-            # Save image
-            image.save(save_path)
-
-            return JsonResponse({'status': 'success', 'message': f'Image {image_count} saved successfully!', 'path': save_path})
-        
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 
-# Train models and save encoding in database
-
-
-# Extract Encodings and Store in Database
 @csrf_exempt
 def extract_and_store_encodings(request):
+    """Processes all stored images, extracts face encodings, and stores them in the database"""
     student = Students.objects.get(admin=request.user.id)  # Get the logged-in student
 
     if request.method == "POST":
         try:
-
-            student_folder = os.path.join('media/images',f"{student.course_id.course_name}_{student.admin.email}")
-            if not os.path.exists(student_folder):
-                return JsonResponse({"error": "No images found for this student!"}, status=400)
+            if student.id not in TEMP_IMAGE_STORAGE or len(TEMP_IMAGE_STORAGE[student.id]) < 8:
+                return JsonResponse({"error": "At least 8 images required for processing!"}, status=400)
 
             encodings = []
 
-            for img_name in os.listdir(student_folder):
-                img_path = os.path.join(student_folder, img_name)
-                image = face_recognition.load_image_file(img_path)
+            for image in TEMP_IMAGE_STORAGE[student.id]:
+                # Convert PIL image to numpy array
+                np_image = np.array(image)
 
-                face_locations = face_recognition.face_locations(image, model="cnn")  # Use CNN
-                face_encodings = face_recognition.face_encodings(image, face_locations)
+                # Detect face locations (high-accuracy)
+                face_locations = face_recognition.face_locations(np_image, model="cnn")  # Use CNN for better accuracy
+                face_encodings = face_recognition.face_encodings(np_image, face_locations)
 
-                if face_encodings:  # If a face is detected
-                    encodings.append(face_encodings[0])
+                if face_encodings:
+                    encodings.append(face_encodings[0])  # Store first detected face encoding
 
             if not encodings:
                 return JsonResponse({"error": "No face detected in images!"}, status=400)
 
-            avg_encoding = np.mean(encodings, axis=0)  # Take average of all encodings
-            print(f"this is enconding ::: {avg_encoding}")
-            # Store in database
+            # Compute average encoding (more accuracy)
+            avg_encoding = np.mean(encodings, axis=0)
+
+            # Store encoding in database
             student.face_encoding = avg_encoding.tolist()
             student.save()
+
+            # Clear temporary storage after successful encoding
+            del TEMP_IMAGE_STORAGE[student.id]
 
             return JsonResponse({"success": "Face encoding stored successfully!"})
         
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}) 
+
     return JsonResponse({'error': 'Invalid request method'}, status=400)
