@@ -242,7 +242,7 @@ def save_image(request):
             TEMP_IMAGE_STORAGE[student.id].append(image)
 
             # Limit to 10 images per student
-            if len(TEMP_IMAGE_STORAGE[student.id]) > 10:
+            if len(TEMP_IMAGE_STORAGE[student.id]) > 5:
                 TEMP_IMAGE_STORAGE[student.id].pop(0)  # Remove oldest image
 
             return JsonResponse({'status': 'success', 'message': f'Image {len(TEMP_IMAGE_STORAGE[student.id])} stored temporarily!'})
@@ -260,8 +260,8 @@ def extract_and_store_encodings(request):
 
     if request.method == "POST":
         try:
-            if student.id not in TEMP_IMAGE_STORAGE or len(TEMP_IMAGE_STORAGE[student.id]) < 8:
-                return JsonResponse({"error": "At least 8 images required for processing!"}, status=400)
+            if student.id not in TEMP_IMAGE_STORAGE or len(TEMP_IMAGE_STORAGE[student.id]) < 2:
+                return JsonResponse({"error": "At least 2 images required for processing!"}, status=400)
 
             encodings = []
 

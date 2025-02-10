@@ -92,7 +92,7 @@
 <body>
     <div class="camera-container">
         <video id="camera" autoplay playsinline></video>
-        <div class="counter" id="counter">0/10</div>
+        <div class="counter" id="counter">0/5</div>
         <div class="capture-btn" id="captureBtn"></div>
         <div class="close-btn" id="closeBtn"></div>
         <div class="notification" id="notification"></div>
@@ -140,12 +140,12 @@
                 });
 
                 if (response.ok) {
-                    if (captureCount < 10) {
+                    if (captureCount < 5) {
                         captureCount++;
-                        counterDisplay.textContent = `${captureCount}/10`;
+                        counterDisplay.textContent = `${captureCount}/5`;
                         showNotification(`Picture ${captureCount} captured!`);
-                        if (captureCount === 10) {
-                            showNotification('Captured 10 pictures. Processing...');
+                        if (captureCount === 5) {
+                            showNotification('Captured 5 pictures. Processing...');
                             setTimeout(closeCamera, 1000);
                         }
                     }
