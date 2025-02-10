@@ -42,6 +42,21 @@
             top: 20px;
             left: 150px;
         }
+
+        /* Speed control buttons */
+        #increaseSpeedBtn,
+        #decreaseSpeedBtn {
+            position: absolute;
+            z-index: 100;
+            padding: 10px 20px;
+            font-size: 16px;
+            top: 20px;
+            right: 20px;
+        }
+
+        #decreaseSpeedBtn {
+            right: 150px;
+        }
     </style>
 </head>
 
@@ -51,6 +66,9 @@
     <!-- Buttons for closing or changing camera -->
     <button id="closeBtn">Close Camera</button>
     <button id="changeCameraBtn">Change Camera</button>
+    <!-- Buttons to control frame sending speed -->
+    <button id="increaseSpeedBtn">Increase Speed</button>
+    <button id="decreaseSpeedBtn">Decrease Speed</button>
     <!-- Hidden video element to capture stream -->
     <video id="video" autoplay playsinline style="display: none;"></video>
 
@@ -60,6 +78,8 @@
         const outputContext = outputCanvas.getContext('2d');
         const closeBtn = document.getElementById('closeBtn');
         const changeCameraBtn = document.getElementById('changeCameraBtn');
+        const increaseSpeedBtn = document.getElementById('increaseSpeedBtn');
+        const decreaseSpeedBtn = document.getElementById('decreaseSpeedBtn');
         const subjectData = "{{ subject_id }}";  // Render these on your template
         const sessionYearData = "{{ session_year }}";
 
@@ -97,6 +117,10 @@
                         // Fallback: if frame is sent as a base64-encoded string.
                         frameQueue.push({ frame: data.frame, processed: data.processed });
                         if (!isDisplaying) displayNextFrame();
+                    }
+                    if (data.recognized_face_ids) {
+                        // Print recognized face IDs to the console
+                        console.log("Recognized Face IDs:", data.recognized_face_ids);
                     }
                 } catch (err) {
                     console.error("Error parsing server text message:", err);
@@ -150,7 +174,7 @@
                 drawImageCover(outputContext, img, window.innerWidth, window.innerHeight);
                 URL.revokeObjectURL(img.src);  // Clean up the object URL.
                 // Display next frame after a short delay.
-                setTimeout(displayNextFrame, 50);
+                setTimeout(displayNextFrame, 200);
             };
             img.src = frameObj.frame;
         }
@@ -171,15 +195,15 @@
 
         // Capture loop: periodically send frames to the server.
         let lastCaptureTime = 0;
-        const captureIntervalMS = 100;  // Capture every 100ms (adjust as needed)
+        let captureIntervalMS = 200;  // Capture every 100ms (adjust as needed)
 
         function captureLoop(timestamp) {
             if (!lastCaptureTime) lastCaptureTime = timestamp;
             const elapsed = timestamp - lastCaptureTime;
             if (elapsed >= captureIntervalMS && video.readyState === video.HAVE_ENOUGH_DATA) {
                 // Capture at a lower resolution for faster processing.
-                const targetWidth = video.videoWidth ;
-                const targetHeight = video.videoHeight ;
+                const targetWidth = video.videoWidth;
+                const targetHeight = video.videoHeight;
                 captureCanvas.width = targetWidth;
                 captureCanvas.height = targetHeight;
                 captureContext.drawImage(video, 0, 0, targetWidth, targetHeight);
@@ -188,7 +212,7 @@
                     if (socket.readyState === WebSocket.OPEN && blob) {
                         socket.send(blob);
                     }
-                }, 'image/jpeg',0.8);
+                }, 'image/jpeg', 0.7);
                 lastCaptureTime = timestamp;
             }
             if (capturing) requestAnimationFrame(captureLoop);
@@ -239,6 +263,18 @@
         changeCameraBtn.addEventListener('click', () => {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             startCamera();
+        });
+
+        // Increase frame sending speed.
+        increaseSpeedBtn.addEventListener('click', () => {
+            captureIntervalMS = Math.max(100, captureIntervalMS - 100); // Decrease interval, min 10ms
+            console.log("Increased frame sending speed. New interval:", captureIntervalMS, "ms");
+        });
+
+        // Decrease frame sending speed.
+        decreaseSpeedBtn.addEventListener('click', () => {
+            captureIntervalMS += 100; // Increase interval
+            console.log("Decreased frame sending speed. New interval:", captureIntervalMS, "ms");
         });
     </script>
 </body>
