@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Capture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: black;
+            overflow: hidden;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .counter {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 20px;
+            color: rgb(248, 6, 6);
+            font-weight: bold;
+        }
+
+        .capture-btn,
+        .close-btn {
+            position: absolute;
+            bottom: 15%;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 4px solid gray;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .capture-btn {
+            left: 40%;
+            background: white;
+        }
+
+        .capture-btn::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: red;
+        }
+
+        .close-btn {
+            left: 60%;
+            background: rgb(255, 195, 32);
+        }
+
+        .notification {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="camera-container">
+        <video id="camera" autoplay playsinline></video>
+        <div class="counter" id="counter">0/5</div>
+        <div class="capture-btn" id="captureBtn"></div>
+        <div class="close-btn" id="closeBtn"></div>
+        <div class="notification" id="notification"></div>
+    </div>
+
+    <script>
+        const camera = document.getElementById('camera');
+        const captureBtn = document.getElementById('captureBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const counterDisplay = document.getElementById('counter');
+        const notification = document.getElementById('notification');
+
+        let stream;
+        let captureCount = 0;
+
+        async function openCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+                camera.srcObject = stream;
+            } catch (err) {
+                showNotification('Error accessing camera.');
+                console.error('Camera access error:', err);
+            }
+        }
+
+        async function capturePhoto() {
+            try {
+                if (camera.videoWidth === 0 || camera.videoHeight === 0) {
+                    alert('Permission Denied or Camera not accessible!');
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = camera.videoWidth;
+                canvas.height = camera.videoHeight;
+                const context = canvas.getContext('2d');
+
+                context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg');
+
+                const response = await fetch('/save-image/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                if (response.ok) {
+                    if (captureCount < 5) {
+                        captureCount++;
+                        counterDisplay.textContent = `${captureCount}/5`;
+                        showNotification(`Picture ${captureCount} captured!`);
+                        if (captureCount === 5) {
+                            showNotification('Captured 5 pictures. Processing...');
+                            setTimeout(closeCamera, 1000);
+                        }
+                    }
+                } else {
+                    showNotification('Picture not saved! Try again.');
+                }
+
+            } catch (error) {
+                console.error('Error capturing photo:', error);
+                alert('An error occurred while capturing the photo.');
+            }
+        }
+
+        async function closeCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                showNotification('Camera closed. Processing...');
+
+                try {
+                    let response = await fetch('/extract-encodings/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+
+                    let result = await response.json();
+
+                    if (result.success) {
+                        showNotification('Face encoding stored successfully!');
+                    } else {
+                        showNotification('Error: ' + (result.error || 'Failed to process face encoding.'));
+                    }
+                } catch (error) {
+                    console.error('Error processing face data:', error);
+                    showNotification('Error processing face data.');
+                }
+
+                setTimeout(() => window.location.href = '/student_profile', 1500);
+            }
+        }
+
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 1000);
+        }
+
+        captureBtn.addEventListener('click', capturePhoto);
+        closeBtn.addEventListener('click', closeCamera);
+
+        openCamera();
+    </script>
+</body>
+
+</html>
