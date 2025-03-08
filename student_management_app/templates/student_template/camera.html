@@ -54,6 +54,7 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .capture-btn {
@@ -66,12 +67,23 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: red;
+            background: rgb(255, 255, 255);
         }
 
         .close-btn {
             left: 60%;
-            background: rgb(255, 195, 32);
+            background: rgb(255, 0, 0);
+        }
+
+        .capture-btn:hover,
+        .close-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .capture-btn:active,
+        .close-btn:active {
+            transform: scale(0.95);
         }
 
         .notification {
@@ -99,6 +111,7 @@
     </div>
 
     <script>
+        alert("Important Notice: Please ensure that you capture a minimum of 2 photos and a maximum of 5 photos. It is essential that your face is centered in all images for optimal results.");
         const camera = document.getElementById('camera');
         const captureBtn = document.getElementById('captureBtn');
         const closeBtn = document.getElementById('closeBtn');

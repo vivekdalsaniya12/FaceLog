@@ -5,57 +5,44 @@
     <meta charset="UTF-8">
     <title>Open Camera</title>
     <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            /* Prevent scrolling */
-        }
-
-        /* Fullscreen canvas with cover effect */
-        #videoCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-        }
-
-        /* Button styling */
+        /* Position close and change camera buttons at the bottom center */
         #closeBtn,
         #changeCameraBtn {
-            position: absolute;
-            z-index: 100;
-            padding: 10px 20px;
+            position: fixed;
+            bottom: 20px;
             font-size: 16px;
+            padding: 10px 20px;
         }
 
         #closeBtn {
-            top: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-120%);
+            background-color: rgb(233, 68, 68);
         }
 
         #changeCameraBtn {
-            top: 20px;
-            left: 150px;
+            left: 50%;
+            transform: translateX(20%);
         }
 
-        /* Speed control buttons */
+        /* Position speed control buttons at the top-right */
         #increaseSpeedBtn,
         #decreaseSpeedBtn {
-            position: absolute;
-            z-index: 100;
-            padding: 10px 20px;
-            font-size: 16px;
+            position: fixed;
             top: 20px;
             right: 20px;
+            font-size: 20px;
+            padding: 10px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
 
         #decreaseSpeedBtn {
-            right: 150px;
+            right: 70px;
         }
     </style>
 </head>
@@ -67,8 +54,8 @@
     <button id="closeBtn">Close Camera</button>
     <button id="changeCameraBtn">Change Camera</button>
     <!-- Buttons to control frame sending speed -->
-    <button id="increaseSpeedBtn">Increase Speed</button>
-    <button id="decreaseSpeedBtn">Decrease Speed</button>
+    <button id="increaseSpeedBtn">+</button>
+    <button id="decreaseSpeedBtn">-</button>
     <!-- Hidden video element to capture stream -->
     <video id="video" autoplay playsinline style="display: none;"></video>
 
