@@ -338,6 +338,7 @@ def add_student_save(request):
         form = AddStudentForm(request.POST, request.FILES)
 
         if form.is_valid():
+            enrollment_number = form.cleaned_data['enrollment_number']
             first_name = form.cleaned_data['first_name']
             last_name = form.cleaned_data['last_name']
             username = form.cleaned_data['username']
@@ -363,7 +364,7 @@ def add_student_save(request):
             try:
                 user = CustomUser.objects.create_user(username=username, password=password, email=email, first_name=first_name, last_name=last_name, user_type=3)
                 user.students.address = address
-
+                user.students.enrollment_number = enrollment_number
                 course_obj = Courses.objects.get(id=course_id)
                 user.students.course_id = course_obj
 
@@ -424,6 +425,7 @@ def edit_student_save(request):
 
         form = EditStudentForm(request.POST, request.FILES)
         if form.is_valid():
+            
             email = form.cleaned_data['email']
             username = form.cleaned_data['username']
             first_name = form.cleaned_data['first_name']
