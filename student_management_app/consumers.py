@@ -62,7 +62,7 @@ def store_attendance_in_db(recognized_ids, subject_id, session_year):
         # For each recognized student, update the AttendanceReport if it exists,
         # or create a new one if it doesn't.
         for stud_id in recognized_ids:
-            student = Students.objects.get(id=stud_id)
+            student = Students.objects.get(enrollment_number=stud_id)
             AttendanceReport.objects.update_or_create(
                 student_id=student,
                 attendance_id=attendance,
@@ -217,6 +217,7 @@ class VideoConsumer(AsyncWebsocketConsumer):
             recognized_faces = 0
             for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
                 name = "unknown"  # Default label.
+                color = (0, 0, 255) 
                 if hasattr(self, "known_face_encodings") and self.known_face_encodings:
                     face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
                     min_distance = np.min(face_distances)
@@ -225,16 +226,18 @@ class VideoConsumer(AsyncWebsocketConsumer):
                     if min_distance < tolerance:
                         name = self.known_face_ids[best_match_index]
                         recognized_faces += 1
+                        color = (0, 255, 0)
 
                         # Add the recognized face ID to the set if not already present
                         if name not in self.recognized_face_ids:
                             self.recognized_face_ids.add(name)
         
                 # Draw rectangle and label on the original frame.
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-                cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
-                cv2.putText(frame, str(name), (left + 6, bottom - 6),
-                            cv2.FONT_HERSHEY_DUPLEX, 1.0, (255, 255, 255), 1)
+                cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                # cv2.rectangle(frame, (left, bottom - 35), (right, bottom), color, cv2.FILLED)
+                # two line for add enrollment number in rectatangle----
+                # cv2.putText(frame, str(name), (left + 6, bottom - 6),
+                #             cv2.FONT_HERSHEY_DUPLEX, 0.3, (255, 255, 255), 1)
 
                 # If two or three faces are recognized, stop further matching.
                 if recognized_faces >= 2:
@@ -269,7 +272,7 @@ class VideoConsumer(AsyncWebsocketConsumer):
                 lambda: list(Students.objects.filter(
                     session_year_id=self.session_year,
                     course_id=subject.course_id
-                ).values("id", "face_encoding"))
+                ).values("enrollment_number", "face_encoding"))
             )
             self.students_qs = students
 
@@ -283,9 +286,9 @@ class VideoConsumer(AsyncWebsocketConsumer):
                 enc = np.array(face_enc, dtype=np.float64)
                 if enc.shape == (128,):
                     self.known_face_encodings.append(enc)
-                    self.known_face_ids.append(student["id"])
+                    self.known_face_ids.append(student["enrollment_number"])   #######################################################################
                 else:
-                    logger.warning("Invalid encoding shape %s for student %s", enc.shape, student["id"])
+                    logger.warning("Invalid encoding shape %s for student %s", enc.shape, student["enrollment_number"])
 
             logger.info("Student encodings fetched and processed.")
         except Exception as e:
