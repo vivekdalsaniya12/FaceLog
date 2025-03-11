@@ -1,4 +1,4 @@
-{% extends 'staff_template/base_template.html' %}
+{% comment %} {% extends 'staff_template/base_template.html' %}
 
 {% block page_title %}
     Add Result
@@ -20,10 +20,10 @@
                     <div class="card-header">
                         <h3 class="card-title">Add Result</h3>
                     </div>
-                    <!-- /.card-header -->
+                    <!-- /.card-header --> {% endcomment %}
 
                                 {% comment %} Display Messages {% endcomment %}
-                                {% if messages %}
+                                {% comment %} {% if messages %}
                                 <div class="form-group">
                                 <div class="col-12">
                                     {% for message in messages %}
@@ -74,10 +74,10 @@
 
                         <div class="card-footer">
                         <button type="button" class="btn btn-primary" id="fetch_student">Fetch Student</button>
-                        </div>
+                        </div> {% endcomment %}
 
                         {% comment %} Displaying Students Here {% endcomment %}
-
+{% comment %} 
                         <div class="card-footer" id="student_data">
                         </div> 
 
@@ -144,9 +144,9 @@
             })
             .fail(function(){
                 alert("Error in Fetching Students.")
-            })
+            }) {% endcomment %}
 
-            // Save Attendance Data to Database
+            {% comment %} // Save Attendance Data to Database
             /*
             $(document).on("click", "#save_attendance", function(){
                 
@@ -205,4 +205,4 @@
         })
     })
 </script>
-{% endblock custom_js %}
+{% endblock custom_js %} {% endcomment %}
