@@ -6,9 +6,18 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers
 import json
+from datetime import datetime
+# import datetime # To Parse input DateTime into Python Date Time Object
+import csv
+import base64
+import os
+import face_recognition
+import numpy as np
+from io import BytesIO
+from PIL import Image
 
 
-from student_management_app.models import CustomUser, Staffs, Courses, Subjects, Students, SessionYearModel, Attendance, AttendanceReport, LeaveReportStaff, FeedBackStaffs, StudentResult
+from .models import CustomUser, Staffs, Courses, Subjects, Students, SessionYearModel, Attendance, AttendanceReport, LeaveReportStaff, FeedBackStaffs, StudentResult
 
 
 def staff_home(request):
@@ -78,6 +87,65 @@ def staff_take_attendance(request):
     }
     return render(request, "staff_template/take_attendance_template.html", context)
 
+def generate_attendance_report(request):
+    subjects = Subjects.objects.all()
+    attendance_records = None
+
+    if request.method == "GET":
+        subject_id = request.GET.get('subject')
+        date_str = request.GET.get('date')
+
+        if subject_id and date_str:
+            try:
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                attendance = Attendance.objects.filter(subject_id=subject_id, attendance_date=date).first()
+
+                if attendance:
+                    attendance_records = AttendanceReport.objects.filter(attendance_id=attendance)
+
+            except ValueError:
+                return HttpResponse("Invalid date format. Please use YYYY-MM-DD.")
+
+    context = {
+        'subjects': subjects,
+        'attendance_records': attendance_records
+    }
+    return render(request,"staff_template/attendance_report.html", context)
+
+def download_attendance_report(request):
+    subject_id = request.GET.get('subject')
+    date_str = request.GET.get('date')
+
+    if not subject_id or not date_str:
+        return HttpResponse("Subject and date parameters are required.", status=400)
+
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        attendance = Attendance.objects.filter(subject_id=subject_id, attendance_date=date).first()
+
+        if not attendance:
+            return HttpResponse("No attendance records found for the given subject and date.", status=404)
+
+        attendance_records = AttendanceReport.objects.filter(attendance_id=attendance)
+
+        # Create response for CSV file
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="attendance_report_{date}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(["Student Name", "Enrollment Number", "Attendance Status"])
+
+        for record in attendance_records:
+            writer.writerow([
+                f"{record.student_id.admin.first_name} {record.student_id.admin.last_name}",
+                record.student_id.enrollment_number,
+                "Present" if record.status else "Absent"
+            ])
+
+        return response
+
+    except ValueError:
+        return HttpResponse("Invalid date format.", status=400)
 
 def staff_apply_leave(request):
     staff_obj = Staffs.objects.get(admin=request.user.id)

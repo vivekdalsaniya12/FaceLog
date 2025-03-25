@@ -86,6 +86,10 @@ class Attendance(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     objects = models.Manager()
 
+    def __str__(self):
+        return str(self.attendance_date)
+    
+
 
 class AttendanceReport(models.Model):
     # Individual Student Attendance
@@ -97,6 +101,9 @@ class AttendanceReport(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     objects = models.Manager()
 
+    def __str__(self):
+        return f"{self.student_id.admin.first_name} {self.student_id.admin.last_name} - {self.attendance_id.attendance_date} - {'Present' if self.status else 'Absent'}"
+    
 
 class LeaveReportStudent(models.Model):
     id = models.AutoField(primary_key=True)

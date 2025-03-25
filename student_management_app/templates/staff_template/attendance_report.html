@@ -1,0 +1,103 @@
+{% extends 'staff_template/base_template.html' %}
+
+{% block custom_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+<style>
+    body {
+        background-color: #f8f9fa;
+        font-family: 'Arial', sans-serif;
+    }
+    .container {
+        max-width: 900px;
+        margin-top: 40px;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+        color: #007bff;
+        text-align: center;
+    }
+    table {
+        margin-top: 20px;
+    }
+    .download-btn {
+        background-color: #28a745;
+        color: white;
+    }
+    .download-btn:hover {
+        background-color: #218838;
+    }
+    .btn-primary {
+        width: 100%;
+    }
+</style>
+{% endblock custom_css %}
+
+{% block page_title %}
+  Attendance Report
+{% endblock page_title %}
+
+{% block main_content %}
+<form method="GET" class="row g-3">
+    <div class="col-md-6">
+        <label for="subject" class="form-label">Select Subject:</label>
+        <select name="subject" id="subject" class="form-select" required>
+            <option value="">-- Choose Subject --</option>
+            {% for subject in subjects %}
+                <option value="{{ subject.id }}">{{ subject.subject_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-6">
+        <label for="date" class="form-label">Select Date:</label>
+        <input type="date" name="date" id="date" class="form-control" required>
+    </div>
+
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Generate Report</button>
+    </div>
+</form>
+<br>
+
+{% if attendance_records is not None %}
+<h3 class="mt-4">Attendance Results:</h3>
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Student Name</th>
+                <th>Enrollment Number</th>
+                <th>Attendance Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in attendance_records %}
+                <tr>
+                    <td>{{ record.student_id.admin.first_name }} {{ record.student_id.admin.last_name }}</td>
+                    <td>{{ record.student_id.enrollment_number }}</td>
+                    <td>
+                        <span class="badge {% if record.status %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if record.status %} Present {% else %} Absent {% endif %}
+                        </span>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Download CSV Report -->
+<a href="{% url 'download_attendance_report' %}?subject={{ request.GET.subject }}&date={{ request.GET.date }}" class="btn download-btn mt-3">
+    Download CSV Report
+</a>
+{% endif %}
+</div>
+
+<!-- Bootstrap JS (for interactive elements) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock main_content %}
+
