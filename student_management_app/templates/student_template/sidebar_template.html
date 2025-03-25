@@ -70,16 +70,16 @@
               </a>
             </li>
 
-            {% comment %} <li class="nav-item">
+            <li class="nav-item">
               {% url 'student_feedback' as student_feedback %}
               <a href="{{ student_feedback }}" class="nav-link {% if request.path == student_feedback %} active {% endif %}">
                 <i class="nav-icon fas fa-comments"></i>
                 <p>
                   Send Feedback
                   {% comment %} <span class="right badge badge-danger">New</span> {% endcomment %}
-                {% comment %} </p>
+                </p>
               </a>
-            </li> {% endcomment %} 
+            </li>
 
           </ul>
         </nav>

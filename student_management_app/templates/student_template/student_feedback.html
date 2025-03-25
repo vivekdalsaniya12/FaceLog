@@ -1,4 +1,4 @@
-{% comment %} {% extends 'student_template/base_template.html' %}
+{% extends 'student_template/base_template.html' %}
 
 {% block page_title %}
     Feedback Message
@@ -18,10 +18,10 @@
                     <div class="card-header">
                         <h3 class="card-title">Leave a Feedback Message</h3>
                     </div>
-                    <!-- /.card-header --> {% endcomment %}
+                    <!-- /.card-header -->
 
                                 {% comment %} Display Messages {% endcomment %}
-                                {% comment %} {% if messages %}
+                                {% if messages %}
                                 <div class="form-group">
                                 <div class="col-12">
                                     {% for message in messages %}
@@ -112,4 +112,4 @@
 
 {% block custom_js %}
 
-{% endblock custom_js %} {% endcomment %}
+{% endblock custom_js %}

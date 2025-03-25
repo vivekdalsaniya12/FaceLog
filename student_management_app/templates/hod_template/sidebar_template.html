@@ -153,7 +153,7 @@
               </a>
             </li>
 
-            {% comment %} <li class="nav-item">
+            <li class="nav-item">
               {% url 'student_feedback_message' as student_feedback_message %}
               <a href="{{ student_feedback_message }}" class="nav-link {% if request.path == student_feedback_message %} active {% endif %}">
                 <i class="nav-icon fas fa-th"></i>
@@ -161,9 +161,9 @@
                   Student Feedback
                 </p>
               </a>
-            </li> {% endcomment %}
+            </li>
 
-            {% comment %} <li class="nav-item">
+            <li class="nav-item">
               {% url 'staff_feedback_message' as staff_feedback_message %}
               <a href="{{ staff_feedback_message }}" class="nav-link {% if request.path == staff_feedback_message %} active {% endif %}">
                 <i class="nav-icon fas fa-th"></i>
@@ -171,7 +171,7 @@
                   Stafff Feedback
                 </p>
               </a>
-            </li> {% endcomment %}
+            </li>
 
             <li class="nav-item">
               {% url 'student_leave_view' as student_leave_view %}

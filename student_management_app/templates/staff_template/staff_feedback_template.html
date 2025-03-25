@@ -1,4 +1,4 @@
-{% comment %} {% extends 'staff_template/base_template.html' %}
+{% extends 'staff_template/base_template.html' %}
 
 {% block page_title %}
     Feedback Message
@@ -17,11 +17,11 @@
                     <div class="card card-primary">
                     <div class="card-header">
                         <h3 class="card-title">Leave a Feedback Message</h3>
-                    </div> {% endcomment %}
+                    </div>
                     <!-- /.card-header -->
 
                                 {% comment %} Display Messages {% endcomment %}
-                                {% comment %} {% if messages %}
+                                {% if messages %}
                                 <div class="form-group">
                                 <div class="col-12">
                                     {% for message in messages %}
@@ -52,10 +52,10 @@
                             <div class="form-group">
                                 <label>Feedback Message </label>
                                 <textarea name="feedback_message" class="form-control" rows="6" placeholder="Feedback Message"></textarea>
-                            </div> {% endcomment %}
+                            </div>
 
 
-                        {% comment %} </div>
+                        </div>
                         <!-- /.card-body -->
 
                         <div class="card-footer">
@@ -112,4 +112,4 @@
 
 {% block custom_js %}
 
-{% endblock custom_js %} {% endcomment %}
+{% endblock custom_js %}
