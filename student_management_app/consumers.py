@@ -42,8 +42,43 @@ def detect_faces(frame):
     return scaled_locations, encodings
 
 # Synchronous helper to store attendance in the database.
+
 @sync_to_async
 def store_attendance_in_db(recognized_ids, subject_id, session_year):
+    try:
+        # Get subject and session objects
+        subject = Subjects.objects.get(id=subject_id)
+        session_obj = SessionYearModel.objects.get(id=session_year)
+        
+        # Use today's date for attendance
+        today = date.today()
+        
+        # Get or create the Attendance record for this subject, session, and date.
+        attendance, created = Attendance.objects.get_or_create(
+            subject_id=subject,
+            attendance_date=today,
+            session_year_id=session_obj
+        )
+        
+        # Get all students for the session and subject
+        all_students = Students.objects.filter(course_id=subject.course_id, session_year_id=session_obj)
+        
+        # For each student, update the AttendanceReport if it exists,
+        # or create a new one if it doesn't, marking absent by default.
+        for student in all_students:
+            status = student.enrollment_number in recognized_ids
+            AttendanceReport.objects.update_or_create(
+                student_id=student,
+                attendance_id=attendance,
+                defaults={'status': status}  # Mark as present if recognized, otherwise absent.
+            )
+        return True
+    except Exception as e:
+        logger.exception("Error storing attendance in DB: %s", e)
+        return False
+
+# @sync_to_async
+# def store_attendance_in_db(recognized_ids, subject_id, session_year):
     try:
         # Get subject and session objects
         subject = Subjects.objects.get(id=subject_id)
