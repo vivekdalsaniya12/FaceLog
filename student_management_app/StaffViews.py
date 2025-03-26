@@ -6,9 +6,18 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers
 import json
+from datetime import datetime
+# import datetime # To Parse input DateTime into Python Date Time Object
+import csv
+import base64
+import os
+import face_recognition
+import numpy as np
+from io import BytesIO
+from PIL import Image
 
 
-from student_management_app.models import CustomUser, Staffs, Courses, Subjects, Students, SessionYearModel, Attendance, AttendanceReport, LeaveReportStaff, FeedBackStaffs, StudentResult
+from .models import CustomUser, Staffs, Courses, Subjects, Students, SessionYearModel, Attendance, AttendanceReport, LeaveReportStaff, FeedBackStaffs, StudentResult
 
 
 def staff_home(request):
@@ -78,6 +87,220 @@ def staff_take_attendance(request):
     }
     return render(request, "staff_template/take_attendance_template.html", context)
 
+def generate_attendance_report(request):
+    try:
+        staff = Staffs.objects.get(admin=request.user.id)
+        subjects = Subjects.objects.filter(staff_id=request.user.id)
+        session_years = SessionYearModel.objects.all()
+        attendance_data = None
+
+        if request.method == "GET" and 'subject' in request.GET:
+            subject_id = request.GET.get('subject')
+            report_type = request.GET.get('report_type', 'date_wise')
+
+            # Verify subject authorization
+            if not subjects.filter(id=subject_id).exists():
+                messages.error(request, "You are not authorized to view this subject's attendance")
+                return redirect('attendance_report')
+
+            # Get the subject and its students
+            subject = Subjects.objects.get(id=subject_id)
+            students = Students.objects.filter(course_id=subject.course_id)
+
+            # Initialize attendance query
+            attendance_query = Attendance.objects.filter(subject_id=subject_id)
+
+            # Apply filters based on report type
+            if report_type == 'session_wise':
+                session_year_id = request.GET.get('session_year')
+                if not session_year_id:
+                    messages.error(request, "Please select a session year")
+                    return redirect('attendance_report')
+                
+                session_year = SessionYearModel.objects.get(id=session_year_id)
+                attendance_query = attendance_query.filter(session_year_id=session_year_id)
+            else:
+                start_date = request.GET.get('start_date')
+                end_date = request.GET.get('end_date')
+                
+                if not start_date or not end_date:
+                    messages.error(request, "Please select both start and end dates")
+                    return redirect('attendance_report')
+                
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                
+                if start_date > end_date:
+                    messages.error(request, "Start date cannot be later than end date")
+                    return redirect('attendance_report')
+                
+                attendance_query = attendance_query.filter(attendance_date__range=[start_date, end_date])
+
+            # Calculate attendance for each student
+            attendance_data = []
+            
+            for student in students:
+                total_classes = attendance_query.count()
+                if total_classes > 0:
+                    attendance_records = AttendanceReport.objects.filter(
+                        attendance_id__in=attendance_query,
+                        student_id=student
+                    )
+                    present_count = attendance_records.filter(status=True).count()
+                    absent_count = attendance_records.filter(status=False).count()
+                    attendance_percentage = (present_count / total_classes) * 100
+
+                    attendance_data.append({
+                        'name': f"{student.admin.first_name} {student.admin.last_name}",
+                        'enrollment_number': student.enrollment_number,
+                        'total_classes': total_classes,
+                        'present': present_count,
+                        'absent': absent_count,
+                        'percentage': round(attendance_percentage, 2)
+                    })
+
+            if not attendance_data:
+                messages.warning(request, "No attendance records found for the selected criteria")
+
+    except Exception as e:
+        messages.error(request, f"An error occurred: {str(e)}")
+        attendance_data = None
+
+    context = {
+        'subjects': subjects,
+        'session_years': session_years,
+        'attendance_data': attendance_data
+    }
+    return render(request, "staff_template/attendance_report.html", context)
+
+def download_attendance_report(request):
+    try:
+        staff = Staffs.objects.get(admin=request.user.id)
+        subject_id = request.GET.get('subject')
+        report_type = request.GET.get('report_type', 'date_wise')
+
+        if not subject_id:
+            messages.error(request, "Subject is required")
+            return redirect('attendance_report')
+
+        # Verify authorization
+        if not Subjects.objects.filter(id=subject_id, staff_id=request.user.id).exists():
+            messages.error(request, "You are not authorized to download this report")
+            return redirect('attendance_report')
+
+        # Get the subject and its students
+        subject = Subjects.objects.get(id=subject_id)
+        students = Students.objects.filter(course_id=subject.course_id)
+
+        # Initialize attendance query
+        attendance_query = Attendance.objects.filter(subject_id=subject_id)
+
+        # Apply filters and set filename
+        if report_type == 'session_wise':
+            session_year_id = request.GET.get('session_year')
+            session_year = SessionYearModel.objects.get(id=session_year_id)
+            attendance_query = attendance_query.filter(session_year_id=session_year_id)
+            filename = f"attendance_report_session_{session_year.session_start_year}"
+        else:
+            start_date = datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').date()
+            end_date = datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d').date()
+            attendance_query = attendance_query.filter(attendance_date__range=[start_date, end_date])
+            filename = f"attendance_report_{start_date}to{end_date}"
+
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+        writer = csv.writer(response)
+
+        # Write header
+        writer.writerow(['Student Name', 'Enrollment Number', 'Total Classes', 'Present', 'Absent', 'Attendance Percentage'])
+
+        # Write data for each student
+        for student in students:
+            total_classes = attendance_query.count()
+            if total_classes > 0:
+                attendance_records = AttendanceReport.objects.filter(
+                    attendance_id__in=attendance_query,
+                    student_id=student
+                )
+                present_count = attendance_records.filter(status=True).count()
+                absent_count = attendance_records.filter(status=False).count()
+                attendance_percentage = (present_count / total_classes) * 100
+
+                writer.writerow([
+                    f"{student.admin.first_name} {student.admin.last_name}",
+                    student.enrollment_number,
+                    total_classes,
+                    present_count,
+                    absent_count,
+                    f"{round(attendance_percentage, 2)}%"
+                ])
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Error generating report: {str(e)}")
+        return redirect('attendance_report')
+
+# def generate_attendance_report(request):
+    subjects = Subjects.objects.all()
+    attendance_records = None
+
+    if request.method == "GET":
+        subject_id = request.GET.get('subject')
+        date_str = request.GET.get('date')
+
+        if subject_id and date_str:
+            try:
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                attendance = Attendance.objects.filter(subject_id=subject_id, attendance_date=date).first()
+
+                if attendance:
+                    attendance_records = AttendanceReport.objects.filter(attendance_id=attendance)
+
+            except ValueError:
+                return HttpResponse("Invalid date format. Please use YYYY-MM-DD.")
+
+    context = {
+        'subjects': subjects,
+        'attendance_records': attendance_records
+    }
+    return render(request,"staff_template/attendance_report.html", context)
+
+# def download_attendance_report(request):
+    subject_id = request.GET.get('subject')
+    date_str = request.GET.get('date')
+
+    if not subject_id or not date_str:
+        return HttpResponse("Subject and date parameters are required.", status=400)
+
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        attendance = Attendance.objects.filter(subject_id=subject_id, attendance_date=date).first()
+
+        if not attendance:
+            return HttpResponse("No attendance records found for the given subject and date.", status=404)
+
+        attendance_records = AttendanceReport.objects.filter(attendance_id=attendance)
+
+        # Create response for CSV file
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="attendance_report_{date}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(["Student Name", "Enrollment Number", "Attendance Status"])
+
+        for record in attendance_records:
+            writer.writerow([
+                f"{record.student_id.admin.first_name} {record.student_id.admin.last_name}",
+                record.student_id.enrollment_number,
+                "Present" if record.status else "Absent"
+            ])
+
+        return response
+
+    except ValueError:
+        return HttpResponse("Invalid date format.", status=400)
 
 def staff_apply_leave(request):
     staff_obj = Staffs.objects.get(admin=request.user.id)

@@ -80,6 +80,8 @@ urlpatterns = [
     path('staff_add_result_save/', StaffViews.staff_add_result_save, name="staff_add_result_save"),
     path('video/',StaffViews.video_view,name='video'),
     path("store_session_data/", StaffViews.store_session_data, name="store_session_data"),
+    path("attendance_report/", StaffViews.generate_attendance_report, name="attendance_report"),
+    path("download_attendance_report/", StaffViews.download_attendance_report, name="download_attendance_report"),
 
     # URSL for Student
     path('student_home/', StudentViews.student_home, name="student_home"),
