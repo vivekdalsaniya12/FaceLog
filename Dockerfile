@@ -11,7 +11,7 @@
 
 #-----------------------------------STAGE-2--------------------------------
 
-FROM python:latest
+FROM facelog:latest
 
 WORKDIR /app
 #RUN apt-get update && rm -rf /var/lib/apt/lists/*
