@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('checkout from Github') {
+            steps {
+                codeClone("master","https://github.com/vivekdalsaniya12/FaceLog.git")
+            }
+        }
+        
+        stage('Test cases') {
+            steps {
+                testcases()
+            }
+        }
+        
+        stage('Docker build') {
+            steps {
+                dockerBuild("vivekdalsaniya/facelog","latest",".")
+            }
+        }
+        
+        stage('Docker Push') {
+            steps {
+                withCredentials ([usernamePassword(credentialsId:'dockercreds',usernameVariable:'USERNAME',passwordVariable:'PASSWORD')]) 
+                {
+                    dockerPush(USERNAME:"${USERNAME}",PASSWORD:"${PASSWORD}",DOCKER_IMAGE:"vivekdalsaniya/facelog",IMAGE_TAG:"latest")
+                }
+            }
+        }
+        
+    }
+}
