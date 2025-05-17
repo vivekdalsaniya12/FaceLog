@@ -1,6 +1,16 @@
 @Library('shared-lib') _
 pipeline {
-    agent { label 'home' }
+    agent { 
+        label 'home' ,
+        docker {
+            image 'sonarsource/sonar-scanner-cli'
+            args '-v'
+        } 
+    }
+    environment {
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_LOGIN = credentials('sonarqube')
+    }
 
     stages {
         stage('checkout from Github') {
@@ -9,9 +19,26 @@ pipeline {
             }
         }
         
-        stage('Test cases') {
+        stage('Generate coverage') {
             steps {
-                testCases()
+                sh """
+                    pip install coverage
+                    coverage run manage.py test
+                    coverage xml
+                    """
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                sh '''
+                    sonar-scanner \
+                        -Dsonar.projectKey=FaceLog \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_LOGIN \
+                        -Dsonar.python.coverage.reportPaths=coverage.xml
+                '''
             }
         }
         
