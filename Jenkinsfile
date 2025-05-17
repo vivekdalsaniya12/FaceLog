@@ -1,6 +1,6 @@
 @Library('shared-lib') _
 pipeline {
-    agent { label: 'home' }
+    agent { label 'home' }
 
     stages {
         stage('checkout from Github') {
