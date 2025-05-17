@@ -1,61 +1,64 @@
 @Library('shared-lib') _
 pipeline {
-    agent { 
-        label 'home' ,
+    agent {
         docker {
-            image 'sonarsource/sonar-scanner-cli'
-            args '-v'
-        } 
+            image 'sonarsource/sonar-scanner-cli:latest'
+            args '-v -u root:root'  // Ensures access to files if permission issues arise
+        }
     }
+
     environment {
-        SONAR_HOST_URL = 'http://localhost:9000'
-        SONAR_LOGIN = credentials('sonarqube')
+        SONAR_HOST_URL = 'http://your-sonarqube-host:9000'  // ⚠ Replace with actual accessible URL
+        SONAR_LOGIN = credentials('sonarqube')              // ⚠ Ensure this is a "Secret Text" credential
     }
 
     stages {
-        stage('checkout from Github') {
+        stage('Checkout from GitHub') {
             steps {
-                codeClone("master","https://github.com/vivekdalsaniya12/FaceLog.git")
+                codeClone("master", "https://github.com/vivekdalsaniya12/FaceLog.git")
             }
         }
-        
-        stage('Generate coverage') {
+
+        stage('Generate Coverage') {
+            agent {
+                docker {
+                    image 'python:3.8-slim'
+                }
+            }
             steps {
                 sh """
-                    pip install coverage
+                    pip install -r requirements.txt coverage
                     coverage run manage.py test
                     coverage xml
-                    """
+                """
             }
         }
-        
+
         stage('SonarQube Analysis') {
             steps {
-                sh '''
+                sh """
                     sonar-scanner \
                         -Dsonar.projectKey=FaceLog \
                         -Dsonar.sources=. \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_LOGIN \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_LOGIN} \
                         -Dsonar.python.coverage.reportPaths=coverage.xml
-                '''
+                """
             }
         }
-        
-        stage('Docker build') {
+
+        stage('Docker Build') {
             steps {
-                dockerBuild("vivekdalsaniya/facelog","latest",".")
+                dockerBuild("vivekdalsaniya/facelog", "latest", ".")
             }
         }
-        
+
         stage('Docker Push') {
             steps {
-                withCredentials ([usernamePassword(credentialsId:'dockercreds',usernameVariable:'USERNAME',passwordVariable:'PASSWORD')]) 
-                {
-                    dockerPush("${USERNAME}","${PASSWORD}","vivekdalsaniya/facelog","latest")
+                withCredentials([usernamePassword(credentialsId: 'dockercreds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    dockerPush("${USERNAME}", "${PASSWORD}", "vivekdalsaniya/facelog", "latest")
                 }
             }
         }
-        
     }
 }
