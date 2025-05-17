@@ -11,7 +11,7 @@ pipeline {
         
         stage('Test cases') {
             steps {
-                testcases()
+                testCases()
             }
         }
         
