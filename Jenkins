@@ -24,7 +24,7 @@ pipeline {
             steps {
                 withCredentials ([usernamePassword(credentialsId:'dockercreds',usernameVariable:'USERNAME',passwordVariable:'PASSWORD')]) 
                 {
-                    dockerPush(USERNAME:"${USERNAME}",PASSWORD:"${PASSWORD}",DOCKER_IMAGE:"vivekdalsaniya/facelog",IMAGE_TAG:"latest")
+                    dockerPush("${USERNAME}","${PASSWORD}","vivekdalsaniya/facelog","latest")
                 }
             }
         }
