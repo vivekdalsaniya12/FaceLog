@@ -3,7 +3,8 @@ pipeline {
     agent {
         docker {
             image 'sonarsource/sonar-scanner-cli:latest'
-            args '-v -u root:root'  // Ensures access to files if permission issues arise
+            // args '-v -u root:root'  // Ensures access to files if permission issues arise
+            userRoot true
         }
     }
 
