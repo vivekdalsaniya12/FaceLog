@@ -11,13 +11,14 @@
 
 #-----------------------------------STAGE-2--------------------------------
 
-FROM facelog:latest
+# FROM facelog:latest
+FROM animcogn/face_recognition:latest
 
 WORKDIR /app
-#RUN apt-get update && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && rm -rf /var/lib/apt/lists/*
 #COPY --from=builder /app/FaceLog /app
 COPY . .
-#RUN pip install -r requirements.txt   
+# RUN pip install -r requirements.txt   
 #--no-cache-dir 
 RUN python manage.py makemigrations
 RUN python manage.py migrate
