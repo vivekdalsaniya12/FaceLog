@@ -18,7 +18,7 @@ WORKDIR /app
 RUN apt-get update && rm -rf /var/lib/apt/lists/*
 #COPY --from=builder /app/FaceLog /app
 COPY . .
-# RUN pip install -r requirements.txt   
+RUN pip install -r requirements.txt   
 #--no-cache-dir 
 RUN python manage.py makemigrations
 RUN python manage.py migrate
