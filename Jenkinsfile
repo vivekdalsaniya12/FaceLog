@@ -8,9 +8,9 @@ pipeline {
         }
     }
 
-    environment {
-        // place here any environment variables you need
-    }
+    // environment {
+    //     // place here any environment variables you need
+    // }
 
     stages {
         stage('Checkout from GitHub') {
