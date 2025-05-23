@@ -1,6 +1,12 @@
 @Library('shared-lib') _
 pipeline {
-    agent { label "home" }
+    agent {
+        docker {
+            image 'docker:24.0.5' // Docker CLI base image
+            args '-v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker socket
+            label 'home'
+        }
+    }
 
     environment {
         // place here any environment variables you need
