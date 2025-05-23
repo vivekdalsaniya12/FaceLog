@@ -1,11 +1,7 @@
 @Library('shared-lib') _
 pipeline {
-    agent {
-        docker {
-            image 'docker:24.0.5' // Docker CLI base image
-            args '-v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker socket
-        }
-    }
+
+    agent any
 
     // environment {
     //     // place here any environment variables you need
