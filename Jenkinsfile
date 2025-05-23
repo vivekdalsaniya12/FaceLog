@@ -4,7 +4,6 @@ pipeline {
         docker {
             image 'docker:24.0.5' // Docker CLI base image
             args '-v /var/run/docker.sock:/var/run/docker.sock' // Mount Docker socket
-            label 'home'
         }
     }
 
